@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Payment Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#09090b;--surface:#111116;--border:rgba(255,255,255,0.07);
+  --text:#e4e4f0;--muted:#52525b;
+  --green:#34d399;--amber:#f59e0b;--blue:#60a5fa;--rose:#fb7185;--slate:#94a3b8;
+}
+body{background:var(--bg);color:var(--text);font-family:'Lexend',sans-serif;font-size:14px;min-height:100vh}
+button{font-family:'Lexend',sans-serif;cursor:pointer}
+select,input{font-family:'DM Mono',monospace;color:var(--text)}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:99px}
+
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex}
+#screen-role{align-items:center;justify-content:center;background:var(--bg)}
+#screen-app{flex-direction:column}
+
+.topbar{height:56px;border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(9,9,11,0.93);backdrop-filter:blur(14px);z-index:50;flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-mid{display:flex;gap:3px}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.logo-icon{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--green),var(--blue));display:flex;align-items:center;justify-content:center;font-size:14px}
+.logo-text{font-weight:700;font-size:14px;letter-spacing:-0.02em}
+
+.pill{font-size:11px;padding:2px 9px;border-radius:99px;font-weight:500;white-space:nowrap;display:inline-block}
+.pill-live{background:rgba(52,211,153,0.1);color:var(--green)}
+.pill-demo{background:rgba(245,158,11,0.1);color:var(--amber)}
+.pill-manager{background:rgba(148,163,184,0.1);color:var(--slate)}
+.pill-collector{background:rgba(52,211,153,0.1);color:var(--green)}
+.pill-allocator{background:rgba(245,158,11,0.1);color:var(--amber)}
+
+.btn{border:none;border-radius:8px;padding:7px 15px;font-size:13px;font-weight:600;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn-green{background:var(--green);color:#09090b}
+.btn-ghost{background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid var(--border)}
+.btn-blue{background:rgba(96,165,250,0.12);color:var(--blue);border:1px solid rgba(96,165,250,0.25)}
+.btn-tab{background:transparent;color:var(--muted);border:none;padding:6px 16px;border-radius:7px;font-size:13px;transition:all .15s}
+.btn-tab.active{background:rgba(255,255,255,0.08);color:var(--text)}
+.btn-day{padding:6px 13px;border-radius:7px;font-size:13px;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .15s;display:flex;align-items:center;gap:5px}
+.btn-day.active{border-color:var(--green);background:rgba(52,211,153,0.08);color:var(--green);font-weight:600}
+.btn-allocate{background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);color:var(--amber);border-radius:6px;padding:4px 11px;font-size:11px;font-weight:600}
+.badge-cnt{font-size:10px;background:rgba(255,255,255,0.07);border-radius:99px;padding:0 5px;font-family:'DM Mono',monospace}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 22px}
+.label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:6px}
+.stat-val{font-size:24px;font-weight:700;font-family:'DM Mono',monospace;line-height:1.15;margin-top:2px}
+.stat-sub{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.4}
+.accent-bar{position:absolute;top:0;left:0;right:0;height:2px;border-radius:14px 14px 0 0}
+
+.bar-track{background:rgba(255,255,255,0.05);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;transition:width .5s ease}
+
+.tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;min-width:800px}
+thead tr{background:rgba(255,255,255,0.025)}
+th{padding:10px 14px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase;text-align:left;border-bottom:1px solid var(--border);font-weight:500;white-space:nowrap}
+td{padding:10px 14px;font-size:12px;color:#c0c8da;vertical-align:middle;border-bottom:1px solid rgba(255,255,255,0.03)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,0.02)}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.grid-2-1{display:grid;grid-template-columns:1.5fr 1fr;gap:14px}
+.grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.grid-4s{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.78);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;z-index:999}
+.overlay.open{display:flex}
+.modal{background:#13151a;border:1px solid var(--border);border-radius:18px;padding:28px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto}
+
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-full{grid-column:1/-1}
+.finp,.fsel{width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:'DM Mono',monospace;outline:none;transition:border-color .15s}
+.finp:focus,.fsel:focus{border-color:rgba(52,211,153,0.4)}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.modal-actions .btn{flex:1;padding:11px 0;font-size:13px}
+
+.role-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:15px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .2s;text-align:left;width:100%;margin-bottom:10px}
+.role-card:hover{border-color:var(--green)}
+
+.main{padding:22px 24px;max-width:1340px;margin:0 auto;width:100%}
+.gap{margin-bottom:18px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.filter-sel{background:var(--surface);border:1px solid var(--border);border-radius:7px;color:#c0c8da;padding:6px 10px;font-size:12px;outline:none}
+.strip-cell{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 14px;text-align:center}
+.strip-val{font-size:16px;font-weight:600;font-family:'DM Mono',monospace}
+.alloc-panel{border-color:rgba(245,158,11,0.25)!important;margin-bottom:16px}
+.archive-row{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-radius:10px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:background .15s}
+.archive-row:hover{background:rgba(255,255,255,0.03)}
+
+.notice{border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.notice-amber{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);color:var(--amber)}
+.notice-green{background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);color:var(--green)}
+.notice-blue{background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);color:var(--blue)}
+
+.hidden{display:none!important}
+@media(max-width:900px){.grid-4{grid-template-columns:1fr 1fr}.grid-2-1{grid-template-columns:1fr}}
+@media(max-width:600px){.grid-4{grid-template-columns:1fr}.grid-4s{grid-template-columns:1fr 1fr}.topbar-mid{display:none}}
+</style>
+</head>
+<body>
+
+<!-- ══ ROLE PICKER ══ -->
+<div id="screen-role" class="screen active">
+  <div style="width:400px;padding:16px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#34d399,#60a5fa);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 16px">💳</div>
+      <h1 style="font-size:28px;font-weight:700;letter-spacing:-0.04em;margin-bottom:6px">Payment Tracker</h1>
+      <p style="color:var(--muted);font-size:14px">Select your role to continue</p>
+    </div>
+    <button class="role-card" onclick="pickRole('manager')">
+      <span style="font-size:22px;width:30px;text-align:center">📊</span>
+      <div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--text)">Manager</div><div style="font-size:12px;color:var(--muted);margin-top:2px">View dashboard &amp; weekly performance</div></div>
+      <span style="color:var(--muted);font-size:16px">›</span>
+    </button>
+    <button class="role-card" onclick="pickRole('collector')">
+      <span style="font-size:22px;width:30px;text-align:center">💳</span>
+      <div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--text)">Collector</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Add payments throughout the day</div></div>
+      <span style="color:var(--muted);font-size:16px">›</span>
+    </button>
+    <button class="role-card" onclick="pickRole('allocator')">
+      <span style="font-size:22px;width:30px;text-align:center">✅</span>
+      <div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--text)">Allocator (Helen)</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Allocate rows &amp; enter report totals</div></div>
+      <span style="color:var(--muted);font-size:16px">›</span>
+    </button>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="screen-app" class="screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo-icon">💳</div>
+      <span class="logo-text">Payment Tracker</span>
+      <span class="pill pill-demo" id="live-pill">Demo</span>
+    </div>
+    <div class="topbar-mid">
+      <button class="btn-tab active" onclick="switchTab('dashboard')">Dashboard</button>
+      <button class="btn-tab" onclick="switchTab('payments')">Payments</button>
+      <button class="btn-tab" id="archive-tab" onclick="openArchive()">Archive</button>
+    </div>
+    <div class="topbar-right">
+      <span class="pill" id="role-pill"></span>
+      <span id="oauth-status"></span>
+      <button class="btn btn-blue hidden" id="refresh-btn" onclick="refreshSheet()" style="font-size:12px;padding:5px 12px">↻ Refresh</button>
+      <button class="btn btn-ghost" id="change-sheet-btn" onclick="showBanner()" style="font-size:12px;padding:5px 12px;display:none">Change Sheet</button>
+      <button class="btn btn-ghost" onclick="goToRolePicker()" style="font-size:12px;padding:5px 12px">Switch Role</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard">
+      <!-- Sheet connect banner -->
+      <div id="sheet-banner" class="card gap" style="border-color:rgba(96,165,250,0.3);border-style:dashed">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div>
+            <div style="font-size:15px;font-weight:600;margin-bottom:4px">📋 Connect This Week's Sheet</div>
+            <div style="font-size:13px;color:var(--muted);line-height:1.6">Paste the Google Sheet ID and set the weekly target. The sheet must be shared: <em>Anyone with the link → Viewer</em></div>
+          </div>
+          <button onclick="hideBanner()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;flex-shrink:0;line-height:1">×</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 180px auto;gap:10px;align-items:flex-end;margin-top:16px">
+          <div>
+            <div class="label">Sheet ID <span style="color:var(--rose)">*</span></div>
+            <input class="finp" id="inp-sid" placeholder="Paste Sheet ID from the Google Sheets URL…" style="width:100%"/>
+          </div>
+          <div>
+            <div class="label">Weekly Target £ <span style="color:var(--rose)">*</span></div>
+            <input class="finp" id="inp-tgt" type="number" placeholder="e.g. 25000" style="width:100%"/>
+          </div>
+          <button class="btn btn-green" onclick="connectSheet()" id="connect-btn" style="padding:9px 20px;white-space:nowrap">Load Sheet</button>
+        </div>
+        <div id="banner-err" style="font-size:12px;color:var(--rose);margin-top:8px;display:none"></div>
+      </div>
+
+      <div class="grid-4 gap" id="stat-cards"></div>
+      <div class="card gap" id="weekly-bar"></div>
+      <div class="grid-2-1">
+        <div class="card" id="job-bars"></div>
+        <div class="card" id="source-split"></div>
+      </div>
+    </div>
+
+    <!-- PAYMENTS -->
+    <div id="tab-payments" class="hidden">
+      <div id="alloc-panel"></div>
+      <div id="oauth-notice"></div>
+      <div class="toolbar">
+        <div style="display:flex;gap:5px;flex-wrap:wrap" id="day-tabs"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="filter-sel" id="filter-job" onchange="renderTable()"><option value="All">All Jobs</option></select>
+          <select class="filter-sel" id="filter-status" onchange="renderTable()">
+            <option value="All">All Status</option><option value="Allocated">Allocated</option><option value="Pending">Pending</option>
+          </select>
+          <button class="btn btn-green hidden" id="add-btn" onclick="openAddModal()">+ Add Payment</button>
+        </div>
+      </div>
+      <div class="grid-4s gap" id="day-strip"></div>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>Time</th><th>Job</th><th>Contract</th><th>Business</th><th>Amount</th><th>Source</th><th>Type</th><th>Status</th></tr></thead>
+        <tbody id="tbl-body"></tbody></table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ADD PAYMENT MODAL -->
+<div class="overlay" id="modal-add">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <span style="font-size:17px;font-weight:700" id="add-title">Add Payment</span>
+      <button onclick="closeModal('modal-add')" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="form-grid" id="add-form"></div>
+    <div id="save-status" style="font-size:12px;margin-top:10px;display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-green" id="save-btn" onclick="savePayment()">Save Payment</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-add')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALLOCATOR TOTAL MODAL -->
+<div class="overlay" id="modal-alloc">
+  <div class="modal" style="width:380px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <span style="font-size:17px;font-weight:700">Update Allocated Total</span>
+      <button onclick="closeModal('modal-alloc')" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="label">Total Allocated Payments (from report) £</div>
+    <input class="finp" id="inp-alloc" type="number" step="0.01" style="width:100%;font-size:20px;margin-bottom:6px"/>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:18px">Enter the figure from your end-of-day payment report.</div>
+    <div class="modal-actions">
+      <button class="btn btn-green" onclick="saveAllocTotal()">Save</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-alloc')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ARCHIVE MODAL -->
+<div class="overlay" id="modal-archive">
+  <div class="modal" style="width:580px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <span style="font-size:17px;font-weight:700">📁 Weekly Archive</span>
+      <button onclick="closeModal('modal-archive')" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div id="archive-body"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  CONFIG — fill in once, then share the file
+// ══════════════════════════════════════════════════════════════
+var API_KEY     = "AIzaSyB6-UjtSNgsO8__EZ56Re9Y-jElaaxSkZ4";   // ← Google API key (read-only access)
+var OAUTH_ID    = "191804850804-cf4o63p4pjca108hrtrbm6l14eiq88iq.apps.googleusercontent.com";   // ← Google OAuth Client ID (for write access)
+var FOLDER_ID   = "1CfIh3U-GaX2I-k11NSmFUBF7XunVyzwg";   // ← Drive folder ID (for archive)
+// ══════════════════════════════════════════════════════════════
+
+var DAYS    = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
+var JOBS    = ["Best Solutions","Blueprint","Business Force","CRT","Impress","RCP","Tradewatch","Vision"];
+var SOURCES = ["Stripe","Merchant"];
+var JOB_COLORS = {"Best Solutions":"#818cf8","Blueprint":"#38bdf8","Business Force":"#fb923c","CRT":"#f472b6","Impress":"#a78bfa","RCP":"#34d399","Tradewatch":"#fbbf24","Vision":"#e879f9"};
+
+// ── DEMO DATA ─────────────────────────────────────────────────
+function buildDemo() {
+  return {
+    Monday:[
+      {date:"2026-03-23 10:12",job:"Best Solutions", contract:"SOLA443",  booking:"2",  business:"L MOFFITT WINDOWS",   amount:37.23,  source:"Stripe",  allocated:true, notes:"PP"},
+      {date:"2026-03-23 10:12",job:"Best Solutions", contract:"SOL445",   booking:"21", business:"THE SPARTAN",          amount:59.60,  source:"Stripe",  allocated:true, notes:"PP"},
+      {date:"2026-03-23 10:35",job:"Best Solutions", contract:"SOLA447",  booking:"10", business:"PSK DESIGN",           amount:238.80, source:"Stripe",  allocated:true, notes:""},
+      {date:"2026-03-23 14:46",job:"Best Solutions", contract:"SOL445",   booking:"24", business:"N G Builders",         amount:394.80, source:"Stripe",  allocated:true, notes:""},
+      {date:"2026-03-23 09:08",job:"Blueprint",      contract:"BPT429",   booking:"63", business:"LIVERPOOL WHOLESALE",  amount:99.60,  source:"Stripe",  allocated:true, notes:"PP"},
+      {date:"2026-03-23 09:27",job:"Blueprint",      contract:"BPTR438",  booking:"19", business:"AJR HOME",             amount:60.00,  source:"Stripe",  allocated:true, notes:"PP"},
+      {date:"2026-03-23 10:00",job:"Blueprint",      contract:"BPT437",   booking:"102",business:"WARRIOR GARDEN",       amount:62.10,  source:"Stripe",  allocated:true, notes:"PP"},
+      {date:"2026-03-23 10:06",job:"Blueprint",      contract:"BPT443",   booking:"72", business:"George Recovery",      amount:100.00, source:"Stripe",  allocated:true, notes:"PP"},
+      {date:"2026-03-23 10:23",job:"Blueprint",      contract:"BPTR446",  booking:"5",  business:"A-One",                amount:202.80, source:"Stripe",  allocated:true, notes:""},
+      {date:"2026-03-23 11:43",job:"Blueprint",      contract:"BPTR448",  booking:"12", business:"RIBBLE VALLEY RAD",    amount:240.00, source:"Stripe",  allocated:true, notes:""},
+      {date:"2026-03-23 12:01",job:"Blueprint",      contract:"BPT448",   booking:"16", business:"FLATPACK MAN",         amount:174.00, source:"Stripe",  allocated:true, notes:""},
+      {date:"2026-03-23 12:21",job:"Blueprint",      contract:"BPT447",   booking:"20", business:"WAFFLICIOUS LTD",      amount:298.80, source:"Stripe",  allocated:true, notes:""},
+      {date:"2026-03-23 13:13",job:"Blueprint",      contract:"BPT438",   booking:"38", business:"IDEAL SIGNS",          amount:58.50,  source:"Stripe",  allocated:true, notes:"PP"},
+      {date:"2026-03-23 13:44",job:"Blueprint",      contract:"BPTR448",  booking:"27", business:"BROTHERS IN LAWN",     amount:240.00, source:"Stripe",  allocated:true, notes:""},
+      {date:"2026-03-23 13:51",job:"Blueprint",      contract:"BPT448",   booking:"30", business:"SUMMIT CONSTRUCTIONS", amount:171.00, source:"Stripe",  allocated:true, notes:"FF"},
+      {date:"2026-03-23 14:12",job:"Blueprint",      contract:"BPT437",   booking:"30", business:"DR ANNA",              amount:79.80,  source:"Stripe",  allocated:true, notes:"PP"},
+      {date:"2026-03-23 14:42",job:"Blueprint",      contract:"BPT447",   booking:"26", business:"SJH JOINERY",          amount:238.80, source:"Stripe",  allocated:true, notes:""},
+      {date:"2026-03-23 15:02",job:"Blueprint",      contract:"BPT441",   booking:"71", business:"CG SKY",               amount:234.00, source:"Stripe",  allocated:true, notes:""},
+      {date:"2026-03-23 15:39",job:"Blueprint",      contract:"BPT437",   booking:"64", business:"BALLYHAN INTERIORS",   amount:100.00, source:"Stripe",  allocated:true, notes:""},
+      {date:"2026-03-23 16:36",job:"Blueprint",      contract:"BPT448",   booking:"45", business:"WRF HEATING",          amount:294.00, source:"Stripe",  allocated:true, notes:""},
+      {date:"2026-03-23 08:56",job:"Business Force", contract:"BFA250912",booking:"1",  business:"Warm Hearts",          amount:74.70,  source:"Merchant",allocated:true, notes:"PP"},
+      {date:"2026-03-23 10:55",job:"Business Force", contract:"BFA260306",booking:"1",  business:"Solihull WDC",         amount:169.86, source:"Merchant",allocated:true, notes:""},
+      {date:"2026-03-23 09:17",job:"Tradewatch",     contract:"TWUK626",  booking:"5",  business:"DL Landscaped",        amount:238.80, source:"Stripe",  allocated:true, notes:""},
+      {date:"2026-03-23 11:23",job:"Tradewatch",     contract:"TWUK926",  booking:"1",  business:"PANDA TREE COMPANY",   amount:99.60,  source:"Stripe",  allocated:true, notes:"PP"},
+      {date:"2026-03-23 13:20",job:"Tradewatch",     contract:"TWUK526",  booking:"14", business:"SIMI CONSTRUCTION",    amount:294.00, source:"Stripe",  allocated:true, notes:""},
+    ],
+    Tuesday:[
+      {date:"2026-03-24 13:37",job:"Best Solutions", contract:"SOL449",   booking:"16", business:"CONNOLLY J BUILDING", amount:171.00, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-24 14:10",job:"Best Solutions", contract:"SOLA449",  booking:"24", business:"KENT ELECTRICAL",     amount:169.86, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-24 14:15",job:"Best Solutions", contract:"SOL449",   booking:"25", business:"BALNEO BATHROOMS",    amount:261.06, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-24 14:16",job:"Best Solutions", contract:"SOL449",   booking:"18", business:"MADDISON GAS",        amount:285.00, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-24 15:22",job:"Best Solutions", contract:"SOLA449",  booking:"25", business:"GILHOOLEY UK LTD",    amount:489.06, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-24 09:47",job:"Blueprint",      contract:"BPTR445",  booking:"5",  business:"GRADE A CONSTRUCTION",amount:249.60, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-24 10:16",job:"Blueprint",      contract:"BPTR445",  booking:"25", business:"DOG PAW TRAINING",    amount:99.60,  source:"Stripe",  allocated:false,notes:"PP"},
+      {date:"2026-03-24 10:45",job:"Blueprint",      contract:"BPTR448",  booking:"33", business:"SHEAR BLISS GARDENS", amount:50.00,  source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-24 13:41",job:"Blueprint",      contract:"BPTR449",  booking:"13", business:"THE IVY ROOM",        amount:171.00, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-24 09:23",job:"Business Force", contract:"BFA260220",booking:"2",  business:"SET IN BRICK",        amount:87.00,  source:"Merchant",allocated:false,notes:"PP"},
+      {date:"2026-03-24 10:15",job:"Business Force", contract:"BF260116", booking:"1",  business:"L COUPE ELECTRICAL",  amount:171.00, source:"Merchant",allocated:false,notes:"FF"},
+      {date:"2026-03-24 08:50",job:"CRT",            contract:"CRT55926", booking:"4",  business:"P MOORTON",           amount:178.80, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-24 10:59",job:"CRT",            contract:"CRT54325", booking:"28", business:"GPB TREES",           amount:20.00,  source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-24 13:11",job:"CRT",            contract:"CRTR56126",booking:"5",  business:"SMART MOVES",         amount:283.86, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-24 16:56",job:"CRT",            contract:"CRTR55426",booking:"1",  business:"CARLIN",              amount:74.70,  source:"Stripe",  allocated:false,notes:""},
+    ],
+    Wednesday:[
+      {date:"2026-03-25 09:23",job:"Best Solutions", contract:"SOL449",   booking:"11", business:"DENUNES",             amount:169.86, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-25 09:33",job:"Blueprint",      contract:"BPT433",   booking:"11", business:"LEICESTERSHIRE GARD", amount:74.70,  source:"Stripe",  allocated:false,notes:"PP"},
+      {date:"2026-03-25 09:41",job:"Blueprint",      contract:"BPTR433",  booking:"2",  business:"AI AUTOS AND RECOV",  amount:50.00,  source:"Stripe",  allocated:false,notes:"FF"},
+      {date:"2026-03-25 09:48",job:"Blueprint",      contract:"BPT448",   booking:"9",  business:"PRIME LIFTS",         amount:105.00, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-25 09:49",job:"Blueprint",      contract:"BPT444",   booking:"47", business:"LETITA ANTOINETTE",   amount:79.60,  source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-25 10:06",job:"Blueprint",      contract:"BPTR449",  booking:"18", business:"H LONGLEY",           amount:237.12, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-25 09:34",job:"CRT",            contract:"CRT54725", booking:"8",  business:"PIT TOP",             amount:79.60,  source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-25 09:20",job:"CRT",            contract:"CRT53525", booking:"58", business:"HOOKWAY RESTORATION",  amount:74.70,  source:"Stripe",  allocated:false,notes:"PP"},
+      {date:"2026-03-25 09:37",job:"Tradewatch",     contract:"TWUK126",  booking:"26", business:"PREMIER CAR SALES",   amount:119.60, source:"Stripe",  allocated:false,notes:""},
+      {date:"2026-03-25 09:20",job:"Tradewatch",     contract:"TWUK426",  booking:"10", business:"THE DIY LADY",        amount:268.80, source:"Stripe",  allocated:false,notes:""},
+    ],
+    Thursday:[],Friday:[]
+  };
+}
+
+// ── STATE ─────────────────────────────────────────────────────
+var S = {
+  role:null, tab:"dashboard", activeDay:"Monday",
+  isLive:false, sheetId:"", weeklyTarget:0,
+  totalAllocated:14299.13, days:buildDemo(),
+  oauthToken:null
+};
+
+// ── UTILS ─────────────────────────────────────────────────────
+function fmt(n){ return "£"+Number(n||0).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function pc(n,d){ return d===0?0:Math.min(100,Math.round((n/d)*100)); }
+function g(id){ return document.getElementById(id); }
+function pill(t,bg,col){ return '<span class="pill" style="background:'+bg+';color:'+col+'">'+t+'</span>'; }
+function bar(p,col,h){ h=h||6; return '<div class="bar-track" style="height:'+h+'px"><div class="bar-fill" style="width:'+p+'%;background:'+col+';height:'+h+'px"></div></div>'; }
+
+// Parse a value from the Allocated column — handles TRUE/FALSE strings, booleans, and checkboxes
+function parseAllocated(v){
+  if(v===true||v===1) return true;
+  if(typeof v==="string") return v.toUpperCase()==="TRUE";
+  return false;
+}
+
+function totals(){
+  var byJob={},byDay={},bySource={Stripe:0,Merchant:0},grand=0;
+  JOBS.forEach(function(j){byJob[j]=0;});
+  DAYS.forEach(function(d){byDay[d]=0;});
+  DAYS.forEach(function(day){
+    (S.days[day]||[]).forEach(function(r){
+      var a=Number(r.amount)||0;
+      byJob[r.job]=(byJob[r.job]||0)+a;
+      byDay[day]+=a;
+      bySource[r.source]=(bySource[r.source]||0)+a;
+      grand+=a;
+    });
+  });
+  return {byJob:byJob,byDay:byDay,bySource:bySource,grand:grand};
+}
+
+// ── GOOGLE SHEETS API (read — uses API key) ───────────────────
+function apiGet(sheetId, range, cb){
+  var url="https://sheets.googleapis.com/v4/spreadsheets/"+sheetId+"/values/"+encodeURIComponent(range)+"?key="+API_KEY;
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(j.error) cb(new Error(j.error.code+": "+j.error.message));
+      else cb(null, j.values||[]);
+    })
+    .catch(function(e){ cb(new Error("Network error — "+e.message)); });
+}
+
+// ── GOOGLE SHEETS API (write — uses OAuth token) ──────────────
+function apiAppend(sheetId, range, values, cb){
+  if(!S.oauthToken){ cb(new Error("Not signed in")); return; }
+  var url="https://sheets.googleapis.com/v4/spreadsheets/"+sheetId+"/values/"+encodeURIComponent(range)+":append?valueInputOption=USER_ENTERED";
+  fetch(url,{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+S.oauthToken},
+    body:JSON.stringify({values:values})
+  }).then(function(r){ return r.json(); })
+    .then(function(j){ if(j.error) cb(new Error(j.error.message)); else cb(null); })
+    .catch(function(e){ cb(e); });
+}
+
+function apiUpdate(sheetId, range, values, cb){
+  if(!S.oauthToken){ cb(new Error("Not signed in")); return; }
+  var url="https://sheets.googleapis.com/v4/spreadsheets/"+sheetId+"/values/"+encodeURIComponent(range)+"?valueInputOption=USER_ENTERED";
+  fetch(url,{
+    method:"PUT",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+S.oauthToken},
+    body:JSON.stringify({values:values})
+  }).then(function(r){ return r.json(); })
+    .then(function(j){ if(j.error) cb(new Error(j.error.message)); else cb(null); })
+    .catch(function(e){ cb(e); });
+}
+
+// ── PARSE ROW from Sheets API ─────────────────────────────────
+// Fetches from A1 so we always have the full picture, then
+// explicitly skips any row where the first cell looks like a
+// header (contains the word "Date") or where there is no valid
+// business name and numeric amount.
+function parseRows(raw){
+  var out=[];
+  (raw||[]).forEach(function(r){
+    // Skip header row — first cell will be "Date" or similar text
+    var firstCell=(r[0]||"").toString().trim().toLowerCase();
+    if(firstCell==="date"||firstCell==="") return;
+    // Skip rows with no business name
+    var biz=(r[4]||"").toString().trim();
+    if(!biz||biz.toLowerCase()==="business name") return;
+    // Skip rows with no valid amount
+    var amt=parseFloat(r[5]);
+    if(!amt||isNaN(amt)) return;
+    out.push({
+      date:r[0]||"", job:(r[1]||"").trim(), contract:(r[2]||"").trim(),
+      booking:(r[3]||"").trim(), business:biz, amount:amt,
+      source:(r[6]||"Stripe").trim(),
+      allocated:parseAllocated(r[7]),
+      allocationDate:(r[8]||"").trim(), notes:(r[9]||"").trim()
+    });
+  });
+  return out;
+}
+
+// ── LOAD SHEET DATA ───────────────────────────────────────────
+function loadSheetData(sheetId, onDone, onError){
+  var allDays={};
+  DAYS.forEach(function(d){allDays[d]=[];});
+  var remaining=DAYS.length;
+  var firstError=null;
+
+  DAYS.forEach(function(day){
+    apiGet(sheetId, day+"!A1:J500", function(err, rows){
+      if(err){
+        if(!firstError) firstError=err;
+      } else if(rows){
+        allDays[day]=parseRows(rows);
+      }
+      remaining--;
+      if(remaining===0){
+        // If ALL days failed, it's a connection problem — report it
+        var totalRows=0;
+        DAYS.forEach(function(d){totalRows+=(allDays[d]||[]).length;});
+        if(totalRows===0 && firstError){
+          if(onError) onError(firstError);
+        } else {
+          loadSummary();
+        }
+      }
+    });
+  });
+
+  function loadSummary(){
+    apiGet(sheetId, "Summary!A1:B25", function(err, rows){
+      var ta=S.totalAllocated, wt=S.weeklyTarget;
+      if(!err && rows){
+        rows.forEach(function(row){
+          var k=(row[0]||"").trim();
+          if(k==="Weekly Target"           && row[1]) wt=parseFloat(row[1])||wt;
+          if(k==="Total Allocated Payment" && row[1]) ta=parseFloat(row[1])||0;
+        });
+      }
+      onDone(allDays, wt, ta);
+    });
+  }
+}
+
+// ── OAUTH (Google Sign-In for write access) ───────────────────
+function initOAuth(){
+  if(!OAUTH_ID) return;
+  // Load Google Identity Services library
+  var s=document.createElement("script");
+  s.src="https://accounts.google.com/gsi/client";
+  s.onload=function(){
+    window._tokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:OAUTH_ID,
+      scope:"https://www.googleapis.com/auth/spreadsheets",
+      callback:function(resp){
+        if(resp.access_token){
+          S.oauthToken=resp.access_token;
+          updateOAuthUI(true);
+        }
+      }
+    });
+  };
+  document.head.appendChild(s);
+}
+
+function requestOAuth(){
+  if(!window._tokenClient){ alert("OAuth not configured. Add your OAUTH_ID to the config."); return; }
+  window._tokenClient.requestAccessToken();
+}
+
+function updateOAuthUI(signedIn){
+  var el=g("oauth-status");
+  if(!OAUTH_ID){ el.innerHTML=""; return; }
+  if(signedIn){
+    el.innerHTML='<span class="pill pill-live" style="font-size:11px">✓ Signed in</span>';
+  } else {
+    el.innerHTML='<button class="btn btn-ghost" onclick="requestOAuth()" style="font-size:12px;padding:5px 12px">🔑 Sign in to save</button>';
+  }
+  // show add/allocate buttons only when signed in (for collector/allocator)
+  if(signedIn && (S.role==="collector"||S.role==="allocator")){
+    g("add-btn").classList.remove("hidden");
+  }
+}
+
+// ── ROLE PICKER ───────────────────────────────────────────────
+function pickRole(role){
+  S.role=role;
+  g("screen-role").classList.remove("active");
+  g("screen-app").classList.add("active");
+
+  var icons={manager:"📊",collector:"💳",allocator:"✅"};
+  var labels={manager:"Manager",collector:"Collector",allocator:"Allocator"};
+  var cls={manager:"pill-manager",collector:"pill-collector",allocator:"pill-allocator"};
+  g("role-pill").textContent=icons[role]+" "+labels[role];
+  g("role-pill").className="pill "+cls[role];
+
+  if(role==="collector") g("archive-tab").style.display="none";
+  if(role!=="collector") g("change-sheet-btn").style.display="";
+  g("refresh-btn").classList.remove("hidden");
+
+  // populate job filter once
+  var jf=g("filter-job");
+  if(jf.options.length===1){
+    JOBS.forEach(function(j){ var o=document.createElement("option"); o.value=j; o.textContent=j; jf.appendChild(o); });
+  }
+
+  // init OAuth for write roles
+  if(role==="collector"||role==="allocator") initOAuth();
+  updateOAuthUI(!!S.oauthToken);
+
+  renderAll();
+}
+
+function goToRolePicker(){
+  g("screen-app").classList.remove("active");
+  g("screen-role").classList.add("active");
+  S.role=null;
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────
+function switchTab(tab){
+  S.tab=tab;
+  g("tab-dashboard").classList.toggle("hidden",tab!=="dashboard");
+  g("tab-payments").classList.toggle("hidden",tab!=="payments");
+  document.querySelectorAll(".btn-tab").forEach(function(b){
+    b.classList.toggle("active",b.textContent.trim().toLowerCase()===tab);
+  });
+  if(tab==="payments") renderPayments();
+}
+
+// ── CONNECT SHEET ─────────────────────────────────────────────
+function showBanner(){ g("sheet-banner").style.display=""; switchTab("dashboard"); }
+function hideBanner(){ g("sheet-banner").style.display="none"; }
+
+function connectSheet(){
+  var sid=g("inp-sid").value.trim();
+  var tgt=parseFloat(g("inp-tgt").value)||0;
+  var errEl=g("banner-err");
+  errEl.style.display="none";
+
+  if(!sid){errEl.textContent="Please paste a Sheet ID.";errEl.style.display="";return;}
+  if(!tgt){errEl.textContent="Please enter a weekly target.";errEl.style.display="";return;}
+  if(!API_KEY){errEl.textContent="No API key configured — please contact your administrator.";errEl.style.display="";return;}
+
+  var btn=g("connect-btn");
+  btn.textContent="Loading…";btn.disabled=true;
+
+  S.sheetId=sid;S.weeklyTarget=tgt;
+
+  loadSheetData(sid, function(allDays, wt, ta){
+    S.days=allDays;
+    S.weeklyTarget=wt||tgt;
+    S.totalAllocated=ta;
+    S.isLive=true;
+    g("live-pill").textContent="● Live";
+    g("live-pill").className="pill pill-live";
+    g("refresh-btn").classList.remove("hidden");
+    hideBanner();
+    btn.textContent="Load Sheet";btn.disabled=false;
+    renderAll();
+  }, function(err){
+    // Error handler — show exactly what went wrong
+    btn.textContent="Load Sheet";btn.disabled=false;
+    var msg=err.message||"Unknown error";
+    if(msg.indexOf("403")>-1||msg.indexOf("PERMISSION")>-1){
+      errEl.innerHTML="⚠ Access denied. Change the sheet sharing to <strong>Anyone with the link → Viewer</strong> (not Editor), then try again.";
+    } else if(msg.indexOf("404")>-1){
+      errEl.innerHTML="⚠ Sheet not found. Double-check the Sheet ID — it's the long string in the Google Sheets URL.";
+    } else if(msg.indexOf("400")>-1){
+      errEl.innerHTML="⚠ Invalid request. Check that the sheet has tabs named exactly: Monday, Tuesday, Wednesday, Thursday, Friday.";
+    } else {
+      errEl.innerHTML="⚠ Could not load sheet: "+msg;
+    }
+    errEl.style.display="";
+  });
+}
+
+function refreshSheet(){
+  if(!S.isLive||!S.sheetId) return;
+  var btn=g("refresh-btn");
+  btn.textContent="Refreshing…";btn.disabled=true;
+  loadSheetData(S.sheetId, function(allDays,wt,ta){
+    S.days=allDays;
+    if(wt) S.weeklyTarget=wt;
+    if(ta) S.totalAllocated=ta;
+    btn.textContent="↻ Refresh";btn.disabled=false;
+    renderAll();
+  }, function(err){
+    btn.textContent="↻ Refresh";btn.disabled=false;
+    alert("Refresh failed: "+err.message);
+  });
+}
+
+// ── RENDER DASHBOARD ──────────────────────────────────────────
+function renderDashboard(){
+  var t=totals();
+  var bacs=S.totalAllocated-t.bySource.Stripe-t.bySource.Merchant;
+  var target=S.weeklyTarget||1;
+
+  g("stat-cards").innerHTML=[
+    {label:"Week Total (rows)",  val:fmt(t.grand),  sub:pc(t.grand,target)+"% of "+fmt(S.weeklyTarget)+" target", accent:"var(--green)"},
+    {label:"Total Allocated",    val:fmt(S.totalAllocated), sub:"From payment report",                             accent:"var(--blue)"},
+    {label:"Stripe + Merchant",  val:fmt(t.bySource.Stripe+t.bySource.Merchant),
+      sub:"Stripe "+fmt(t.bySource.Stripe)+" · Merchant "+fmt(t.bySource.Merchant),                               accent:"var(--amber)"},
+    {label:"BACS (derived)",     val:fmt(bacs),     sub:"Allocated − Stripe − Merchant",                          accent:"var(--rose)"},
+  ].map(function(c){
+    return '<div class="card" style="position:relative;overflow:hidden">'+
+      '<div class="accent-bar" style="background:'+c.accent+'"></div>'+
+      '<div class="label">'+c.label+'</div>'+
+      '<div class="stat-val">'+c.val+'</div>'+
+      '<div class="stat-sub">'+c.sub+'</div></div>';
+  }).join("");
+
+  var pctVal=pc(t.grand,target);
+  g("weekly-bar").innerHTML=
+    '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">'+
+      '<div class="label">Weekly Target Progress</div>'+
+      '<span style="font-family:\'DM Mono\',monospace;font-size:12px;color:var(--green)">'+fmt(t.grand)+' / '+fmt(S.weeklyTarget)+'</span></div>'+
+    bar(pctVal,"linear-gradient(90deg,var(--green),var(--blue))",7)+
+    '<div class="grid-5" style="margin-top:14px">'+
+    DAYS.map(function(d){
+      var amt=t.byDay[d]||0; var has=(S.days[d]||[]).length>0;
+      return '<div style="text-align:center;cursor:pointer" onclick="switchTab(\'payments\');S.activeDay=\''+d+'\';renderPayments()">'+
+        '<div style="font-size:10px;color:var(--muted);margin-bottom:3px;letter-spacing:.05em">'+d.slice(0,3).toUpperCase()+'</div>'+
+        '<div style="font-size:13px;font-family:\'DM Mono\',monospace;font-weight:'+(has?600:400)+';color:'+(has?"var(--text)":"#27272a")+'">'+fmt(amt)+'</div>'+
+        '<div style="font-size:10px;color:var(--muted);margin-top:2px">'+(S.days[d]||[]).length+' rows</div></div>';
+    }).join("")+'</div>';
+
+  var activeJobs=JOBS.filter(function(j){return t.byJob[j]>0;}).sort(function(a,b){return t.byJob[b]-t.byJob[a];});
+  var maxJob=activeJobs.length?t.byJob[activeJobs[0]]:1;
+  g("job-bars").innerHTML='<div class="label">Revenue by Job — This Week</div><div style="margin-top:14px">'+
+    (activeJobs.length?activeJobs.map(function(j){
+      return '<div style="margin-bottom:13px">'+
+        '<div style="display:flex;justify-content:space-between;margin-bottom:4px">'+
+          '<span style="font-size:13px;color:#c0c8da">'+j+'</span>'+
+          '<span style="font-family:\'DM Mono\',monospace;font-size:13px;font-weight:600;color:'+(JOB_COLORS[j]||"#888")+'">'+fmt(t.byJob[j])+'</span></div>'+
+        bar(pc(t.byJob[j],maxJob),JOB_COLORS[j]||"#888")+'</div>';
+    }).join(""):'<div style="color:var(--muted);font-size:13px">No data yet</div>')+'</div>';
+
+  g("source-split").innerHTML='<div class="label">Payment Source</div><div style="margin-top:14px">'+
+    [["Stripe",t.bySource.Stripe,"var(--blue)"],["Merchant",t.bySource.Merchant,"var(--amber)"]].map(function(x){
+      return '<div style="margin-bottom:18px">'+
+        '<div style="display:flex;justify-content:space-between;margin-bottom:4px">'+
+          '<span style="font-size:13px;color:#c0c8da">'+x[0]+'</span>'+
+          '<span style="font-family:\'DM Mono\',monospace;font-size:13px;font-weight:600;color:'+x[2]+'">'+fmt(x[1])+'</span></div>'+
+        bar(pc(x[1],t.grand||1),x[2])+
+        '<div style="font-size:10px;color:var(--muted);margin-top:3px">'+pc(x[1],t.grand)+'% of row total</div></div>';
+    }).join("")+
+    '<div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">'+
+      '<div class="label">Report-Derived BACS</div>'+
+      '<div style="font-family:\'DM Mono\',monospace;font-size:22px;font-weight:700;color:var(--rose)">'+fmt(bacs)+'</div>'+
+      '<div style="font-size:11px;color:var(--muted);margin-top:3px">Total Allocated − row Stripe − row Merchant</div></div></div>';
+}
+
+// ── RENDER PAYMENTS ───────────────────────────────────────────
+function renderPayments(){ renderDayTabs(); renderAllocPanel(); renderOAuthNotice(); renderTable(); }
+
+function renderDayTabs(){
+  g("day-tabs").innerHTML=DAYS.map(function(d){
+    var cnt=(S.days[d]||[]).length; var act=S.activeDay===d;
+    return '<button class="btn-day'+(act?" active":"")+'" onclick="S.activeDay=\''+d+'\';renderPayments()">'+
+      d.slice(0,3)+(cnt?'<span class="badge-cnt">'+cnt+'</span>':"")+
+    '</button>';
+  }).join("");
+}
+
+function renderOAuthNotice(){
+  var el=g("oauth-notice");
+  if(!OAUTH_ID||S.role==="manager"||S.oauthToken){ el.innerHTML=""; return; }
+  el.innerHTML='<div class="notice notice-amber gap">'+
+    '<span>🔑</span>'+
+    '<span>Sign in with Google to save payments and allocations directly to the sheet. &nbsp;'+
+    '<button class="btn btn-ghost" onclick="requestOAuth()" style="font-size:12px;padding:4px 10px">Sign in</button></span></div>';
+}
+
+function renderAllocPanel(){
+  var panel=g("alloc-panel");
+  if(S.role!=="allocator"){panel.innerHTML="";return;}
+  var rows=S.days[S.activeDay]||[];
+  var stripe=0,merchant=0,pending=0;
+  rows.forEach(function(r){
+    if(r.allocated&&r.source==="Stripe") stripe+=r.amount;
+    else if(r.allocated&&r.source==="Merchant") merchant+=r.amount;
+    if(!r.allocated) pending++;
+  });
+  var bacs=S.totalAllocated-stripe-merchant;
+  panel.innerHTML='<div class="card alloc-panel gap">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
+      '<div style="display:flex;align-items:center;gap:8px"><span>✅</span>'+
+      '<span style="font-size:14px;font-weight:600;color:var(--amber)">End-of-Day Panel — '+S.activeDay+'</span></div>'+
+      (pending?pill(pending+" rows pending","rgba(251,113,133,0.12)","var(--rose)"):"")+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">'+
+      [["Stripe (rows)",fmt(stripe),"var(--blue)"],["Merchant (rows)",fmt(merchant),"var(--amber)"],["Pending",pending+" rows","var(--rose)"]].map(function(x){
+        return '<div style="background:rgba(255,255,255,0.03);border-radius:9px;padding:11px 13px">'+
+          '<div class="label">'+x[0]+'</div>'+
+          '<div style="font-size:17px;font-weight:700;font-family:\'DM Mono\',monospace;color:'+x[2]+'">'+x[1]+'</div></div>';
+      }).join("")+
+    '</div>'+
+    '<div style="border-top:1px solid var(--border);padding-top:14px">'+
+      '<div class="label">Total Allocated Payments — from payment report</div>'+
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+
+        '<span style="font-family:\'DM Mono\',monospace;font-size:24px;font-weight:700">'+fmt(S.totalAllocated)+'</span>'+
+        '<button class="btn btn-ghost" style="font-size:12px;padding:5px 12px" onclick="openAllocEdit()">Edit</button></div>'+
+      '<div style="font-size:12px;color:var(--muted);display:flex;gap:20px;flex-wrap:wrap">'+
+        '<span>Stripe: <strong style="color:var(--blue)">'+fmt(stripe)+'</strong></span>'+
+        '<span>Merchant: <strong style="color:var(--amber)">'+fmt(merchant)+'</strong></span>'+
+        '<span>BACS (derived): <strong style="color:var(--rose)">'+fmt(bacs)+'</strong></span></div></div></div>';
+}
+
+function renderTable(){
+  var rows=S.days[S.activeDay]||[];
+  var fJob=g("filter-job").value, fSt=g("filter-status").value;
+  var filtered=rows.filter(function(r){
+    return (fJob==="All"||r.job===fJob)&&(fSt==="All"||(fSt==="Allocated"?r.allocated:!r.allocated));
+  });
+
+  var dayTotal=0,allocTotal=0,pendCnt=0;
+  filtered.forEach(function(r){dayTotal+=r.amount;if(r.allocated)allocTotal+=r.amount;else pendCnt++;});
+  g("day-strip").innerHTML=[
+    ["Payments",filtered.length,"var(--text)"],
+    ["Day Total",fmt(dayTotal),"var(--green)"],
+    ["Allocated",fmt(allocTotal),"var(--blue)"],
+    ["Unallocated",pendCnt+" rows","var(--rose)"]
+  ].map(function(x){
+    return '<div class="strip-cell"><div class="label">'+x[0]+'</div><div class="strip-val" style="color:'+x[2]+'">'+x[1]+'</div></div>';
+  }).join("");
+
+  if(!filtered.length){
+    g("tbl-body").innerHTML='<tr><td colspan="8" style="padding:40px;text-align:center;color:var(--muted)">No payments recorded yet for '+S.activeDay+'.</td></tr>';
+    return;
+  }
+  g("tbl-body").innerHTML=filtered.map(function(r){
+    var jc=JOB_COLORS[r.job]||"#888";
+    var nc=r.notes==="PP"?"var(--amber)":r.notes==="FF"?"var(--green)":"transparent";
+    var realIdx=rows.indexOf(r);
+    var statusCell=r.allocated
+      ?'<span style="color:var(--green)">✓</span>'
+      :S.role==="allocator"
+        ?'<button class="btn-allocate" onclick="allocateRow('+realIdx+')">Allocate</button>'
+        :'<span style="color:#27272a;font-size:11px">Pending</span>';
+    return '<tr>'+
+      '<td style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--muted)">'+((r.date||"").slice(11,16)||"—")+'</td>'+
+      '<td>'+pill(r.job,jc+"20",jc)+'</td>'+
+      '<td style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--muted)">'+r.contract+'</td>'+
+      '<td>'+r.business+'</td>'+
+      '<td style="font-family:\'DM Mono\',monospace;color:var(--green);font-weight:600">'+fmt(r.amount)+'</td>'+
+      '<td>'+pill(r.source,r.source==="Stripe"?"rgba(96,165,250,0.1)":"rgba(245,158,11,0.1)",r.source==="Stripe"?"var(--blue)":"var(--amber)")+'</td>'+
+      '<td>'+(r.notes?pill(r.notes==="PP"?"Partial":"Final",nc+"18",nc):'<span style="color:#222">—</span>')+'</td>'+
+      '<td style="text-align:center">'+statusCell+'</td></tr>';
+  }).join("");
+}
+
+function renderAll(){ renderDashboard(); if(S.tab==="payments") renderPayments(); }
+
+// ── ALLOCATE ROW ──────────────────────────────────────────────
+function allocateRow(idx){
+  var row=S.days[S.activeDay][idx];
+  var today=new Date().toISOString().slice(0,10);
+  row.allocated=true; row.allocationDate=today;
+
+  // Write back to sheet if signed in — find the actual sheet row number
+  // Rows start at row 2 (row 1 is header). idx is 0-based within parsed rows.
+  // We need to find the row in the original unfiltered day data.
+  if(S.isLive&&S.oauthToken){
+    var sheetRow=idx+2; // +2 for header row offset
+    var range=S.activeDay+"!H"+(sheetRow)+":I"+sheetRow;
+    apiUpdate(S.sheetId, range, [["TRUE", today]], function(err){
+      if(err) console.warn("Could not write allocation to sheet:", err.message);
+    });
+  }
+  renderPayments(); renderDashboard();
+}
+
+function openAllocEdit(){
+  g("inp-alloc").value=S.totalAllocated||"";
+  g("modal-alloc").classList.add("open");
+}
+function saveAllocTotal(){
+  var v=parseFloat(g("inp-alloc").value)||0;
+  S.totalAllocated=v;
+  // Write to Summary sheet if signed in
+  if(S.isLive&&S.oauthToken){
+    apiUpdate(S.sheetId,"Summary!B11",[[v]],function(err){
+      if(err) console.warn("Could not write total to sheet:", err.message);
+    });
+  }
+  closeModal("modal-alloc"); renderAll();
+}
+
+// ── ADD PAYMENT ───────────────────────────────────────────────
+function openAddModal(){
+  g("add-title").textContent="Add Payment — "+S.activeDay;
+  g("save-status").style.display="none";
+  var now=new Date().toISOString().slice(0,16);
+  g("add-form").innerHTML=
+    '<div><div class="label">Job</div><select class="fsel" id="af-job">'+JOBS.map(function(j){return '<option>'+j+'</option>';}).join("")+'</select></div>'+
+    '<div><div class="label">Source</div><select class="fsel" id="af-src">'+SOURCES.map(function(s){return '<option>'+s+'</option>';}).join("")+'</select></div>'+
+    '<div><div class="label">Contract No. *</div><input class="finp" id="af-con" placeholder="e.g. BPT449"/></div>'+
+    '<div><div class="label">Booking No.</div><input class="finp" id="af-bk" placeholder="e.g. 12"/></div>'+
+    '<div class="form-full"><div class="label">Business Name *</div><input class="finp" id="af-biz" placeholder="e.g. ACME BUILDERS LTD"/></div>'+
+    '<div><div class="label">Amount (£) *</div><input class="finp" id="af-amt" type="number" step="0.01" placeholder="0.00"/></div>'+
+    '<div><div class="label">Notes</div><select class="fsel" id="af-nt"><option value="">None</option><option value="PP">PP — Partial Payment</option><option value="FF">FF — Final Payment</option></select></div>'+
+    '<div><div class="label">Date &amp; Time</div><input class="finp" id="af-dt" type="datetime-local" value="'+now+'"/></div>';
+  g("modal-add").classList.add("open");
+}
+
+function savePayment(){
+  var biz=g("af-biz").value.trim(), con=g("af-con").value.trim(), amt=parseFloat(g("af-amt").value);
+  if(!biz||!con||!amt){alert("Business name, contract number and amount are required.");return;}
+  var notes=g("af-nt").value.split(" —")[0];
+  var dateVal=g("af-dt").value.replace("T"," ");
+  var row={date:dateVal,job:g("af-job").value,contract:con,booking:g("af-bk").value,
+    business:biz,amount:amt,source:g("af-src").value,notes:notes,allocated:false,allocationDate:""};
+
+  // Add to local state immediately
+  S.days[S.activeDay].push(row);
+
+  // Write to sheet if signed in
+  if(S.isLive&&S.oauthToken){
+    var btn=g("save-btn"); btn.textContent="Saving…"; btn.disabled=true;
+    var ss=g("save-status"); ss.style.display=""; ss.style.color="var(--amber)"; ss.textContent="Saving to sheet…";
+    var values=[[dateVal,row.job,row.contract,row.booking,row.business,row.amount,row.source,"FALSE","",notes]];
+    apiAppend(S.sheetId, S.activeDay+"!A:J", values, function(err){
+      btn.textContent="Save Payment"; btn.disabled=false;
+      if(err){
+        ss.style.color="var(--rose)"; ss.textContent="⚠ Saved locally only — sheet write failed: "+err.message;
+      } else {
+        ss.style.color="var(--green)"; ss.textContent="✓ Saved to sheet";
+        setTimeout(function(){closeModal("modal-add");},800);
+      }
+      renderAll();
+    });
+  } else {
+    // Not connected to live sheet — save locally only
+    var notice = S.isLive
+      ? "⚠ Saved locally — sign in with Google to write to the sheet"
+      : "Saved locally (demo mode — connect a sheet to persist data)";
+    var ss2=g("save-status"); ss2.style.display=""; ss2.style.color="var(--amber)"; ss2.textContent=notice;
+    setTimeout(function(){closeModal("modal-add");},1000);
+    renderAll();
+  }
+}
+
+// ── ARCHIVE ───────────────────────────────────────────────────
+function openArchive(){
+  g("modal-archive").classList.add("open");
+  g("archive-body").innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">Loading…</div>';
+  var demoFiles=[
+    {id:"demo1",name:"Payments 16 Mar – 20 Mar",createdTime:"2026-03-20T17:00:00Z"},
+    {id:"demo2",name:"Payments 09 Mar – 13 Mar",createdTime:"2026-03-13T17:00:00Z"},
+    {id:"demo3",name:"Payments 02 Mar – 06 Mar",createdTime:"2026-03-06T17:00:00Z"},
+  ];
+  if(!FOLDER_ID||!API_KEY){showArchiveList(demoFiles);return;}
+  var url="https://www.googleapis.com/drive/v3/files?q='"+FOLDER_ID+"'+in+parents+and+mimeType='application/vnd.google-apps.spreadsheet'&orderBy=createdTime+desc&fields=files(id,name,createdTime)&key="+API_KEY;
+  fetch(url).then(function(r){return r.json();}).then(function(j){
+    showArchiveList((j.files&&j.files.length)?j.files:demoFiles);
+  }).catch(function(){showArchiveList(demoFiles);});
+}
+
+function showArchiveList(files){
+  g("archive-body").innerHTML=files.map(function(f){
+    var dt=new Date(f.createdTime).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+    return '<div class="archive-row" onclick="openArchiveFile(\''+f.id+'\',\''+f.name.replace(/'/g,"\\'")+'\')">'+
+      '<div><div style="font-size:14px;font-weight:500;color:var(--text)">'+f.name+'</div>'+
+      '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+dt+'</div></div>'+
+      '<span style="color:var(--muted);font-size:18px">›</span></div>';
+  }).join("");
+}
+
+function openArchiveFile(id,name){
+  g("archive-body").innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">Loading '+name+'…</div>';
+  if(id.startsWith("demo")){
+    showArchivePreview({name:name,target:25000,totalAllocated:18420.50,grand:18420.50,
+      byJob:{"Best Solutions":3200,"Blueprint":5400,"Business Force":800,"CRT":1200,"Tradewatch":2800,"Impress":0,"RCP":0,"Vision":0}});
+    return;
+  }
+  loadSheetData(id, function(allDays, wt, ta){
+    var grand=0; var byJob={};
+    JOBS.forEach(function(j){byJob[j]=0;});
+    DAYS.forEach(function(d){(allDays[d]||[]).forEach(function(r){byJob[r.job]=(byJob[r.job]||0)+r.amount;grand+=r.amount;});});
+    showArchivePreview({name:name,target:wt,totalAllocated:ta,grand:grand,byJob:byJob});
+  });
+}
+
+function showArchivePreview(p){
+  var activeJobs=JOBS.filter(function(j){return p.byJob[j]>0;});
+  g("archive-body").innerHTML=
+    '<button onclick="openArchive()" style="background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer;padding:0;margin-bottom:14px">← Back to list</button>'+
+    '<div style="font-size:15px;font-weight:600;margin-bottom:14px">'+p.name+'</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">'+
+    [["Week Total",fmt(p.grand),"var(--green)"],["Target",fmt(p.target),"var(--slate)"],
+     ["Total Allocated",fmt(p.totalAllocated),"var(--blue)"],["% of Target",pc(p.grand,p.target||1)+"%","var(--amber)"]
+    ].map(function(x){
+      return '<div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px 14px">'+
+        '<div class="label">'+x[0]+'</div>'+
+        '<div style="font-size:20px;font-weight:700;font-family:\'DM Mono\',monospace;color:'+x[2]+'">'+x[1]+'</div></div>';
+    }).join("")+'</div>'+
+    '<div class="label" style="margin-bottom:8px">Revenue by Job</div>'+
+    activeJobs.map(function(j){
+      return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)">'+
+        '<span style="font-size:13px;color:#c0c8da">'+j+'</span>'+
+        '<span style="font-family:\'DM Mono\',monospace;font-size:13px;font-weight:600;color:'+(JOB_COLORS[j]||"#888")+'">'+fmt(p.byJob[j])+'</span></div>';
+    }).join("");
+}
+
+// ── MODALS ────────────────────────────────────────────────────
+function closeModal(id){g(id).classList.remove("open");}
+document.addEventListener("click",function(e){if(e.target.classList.contains("overlay"))e.target.classList.remove("open");});
+</script>
+</body>
+</html>
